@@ -17,8 +17,6 @@ namespace FLAU_Demo
     {
         Application kpApp;
         UIA3Automation automation = new UIA3Automation();
-        //create a conditon factory to filtering elements
-        ConditionFactory cf = new ConditionFactory(new UIA3PropertyLibrary());
 
         [SetUp]
         public void Setup()

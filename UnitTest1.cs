@@ -21,22 +21,13 @@ namespace FLAU_Demo
         [SetUp]
         public void Setup()
         {
-            //Window loginWin;
-            kpApp = Application.Launch(@"C:\Program Files\KeePass Password Safe 2\KeePass.exe");
-            kpApp.WaitWhileBusy();
-
-            //get the KeePass Window
-            //wait for the window using retry instead of a thread.sleep
-            Retry.WhileException(() =>
-            {
-                var loginWin = kpApp.GetAllTopLevelWindows(automation)[0];
+            kpApp = startApp();
+            var loginWin = kpApp.GetAllTopLevelWindows(automation)[0];
             
-                var passwordField = WaitForElement(() => loginWin?.FindFirstDescendant(cf => cf.ByAutomationId("m_tbPassword")).AsTextBox());
-                passwordField?.Enter("password");
+            var passwordField = WaitForElement(() => loginWin?.FindFirstDescendant(cf => cf.ByAutomationId("m_tbPassword")).AsTextBox());
+            passwordField?.Enter("password");
 
-                loginWin.FindFirstDescendant(cf => cf.ByAutomationId("m_btnOK")).AsButton().Invoke();
-
-            }, TimeSpan.FromSeconds(30), null, true);
+            loginWin.FindFirstDescendant(cf => cf.ByAutomationId("m_btnOK")).AsButton().Invoke();
         }
 
         [Test]
@@ -49,7 +40,6 @@ namespace FLAU_Demo
                 //Switch to new Main KeePass Window (refresh getting first child window of kpApp)
                 var mainWin = kpApp.GetAllTopLevelWindows(automation)[0];
                 
-
                 //New Entry Button Click
                 mainWin.FindFirstByXPath("/ToolBar/Button[@Name=\"Add Entry\"]").AsButton().Click();
 
@@ -83,10 +73,20 @@ namespace FLAU_Demo
                 //Save & Close the app
                 var saveBtn = WaitForElement(() => mainWin.FindFirstByXPath("/ToolBar/Button[@Name=\"Save Database\"]").AsButton());
                 saveBtn.Click();
-
                 mainWin.Close();
 
-            }, TimeSpan.FromSeconds(30), null, true);
+            }, TimeSpan.FromSeconds(10), null, true);
+        }
+
+        private Application startApp()
+        {
+            var app = Application.Launch(@"C:\Program Files\KeePass Password Safe 2\KeePass.exe");
+
+            Retry.WhileException(() =>
+            {
+                var loginWin = app.GetAllTopLevelWindows(automation)[0];
+            }, TimeSpan.FromSeconds(10), null, true);
+            return app;
         }
 
         private T WaitForElement<T>(Func<T> getter)
@@ -96,7 +96,7 @@ namespace FLAU_Demo
             return retry.Result;
         }
 
-        private static void takeScreenShot()
+        private void takeScreenShot()
         {
             var image = Capture.Screen();
             string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, "newEntry.png"); //use NUnit test context

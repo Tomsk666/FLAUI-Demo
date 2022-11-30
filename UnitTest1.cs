@@ -1,11 +1,8 @@
-using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Capturing;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Input;
-using FlaUI.Core.Logging;
 using FlaUI.Core.Tools;
-using FlaUI.UIA3;
-using NUnit.Framework.Internal;
 
 // This uses the NuGet package FlaUI.UIA3.Signed (4.0.0)
 // Also, use chocolatey to install FlaUIInspect (choco install flauinspect), then run from cmd flauinspect
@@ -28,7 +25,7 @@ namespace FLAU_Demo
         {
             //Window loginWin;
             kpApp = Application.Launch(@"C:\Program Files\KeePass Password Safe 2\KeePass.exe");
-            kpApp.WaitWhileBusy(TimeSpan.FromSeconds(4)); //This doesn't do much here
+            kpApp.WaitWhileBusy();
 
             //get the KeePass Window
             //wait for the window using retry instead of a thread.sleep
@@ -53,6 +50,7 @@ namespace FLAU_Demo
             {
                 //Switch to new Main KeePass Window (refresh getting first child window of kpApp)
                 var mainWin = kpApp.GetAllTopLevelWindows(automation)[0];
+                
 
                 //New Entry Button Click
                 mainWin.FindFirstByXPath("/ToolBar/Button[@Name=\"Add Entry\"]").AsButton().Click();
@@ -71,12 +69,18 @@ namespace FLAU_Demo
                 var firstListItem = mainWin.FindFirstByXPath("//List[@AutomationId=\"m_lvEntries\"]/ListItem");
                 Assert.That(firstListItem.Properties.Name, Is.EqualTo("edgewords"));
 
+                //capture a screenshot
+                takeScreenShot();
+                
                 //Delete the entry & tidy up
                 firstListItem.Click();
                 Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.DELETE);
                 //dialog asking are you sure appears:
                 var yesBtn = WaitForElement(() => mainWin.FindFirstByXPath("/Window[@Name=\"KeePass\"]/Button[@Name=\"Yes\"]").AsButton());
-                yesBtn.Click();
+                if (yesBtn != null)
+                {
+                    yesBtn.Click();
+                }
 
                 //Save & Close the app
                 var saveBtn = WaitForElement(() => mainWin.FindFirstByXPath("/ToolBar/Button[@Name=\"Save Database\"]").AsButton());
@@ -89,9 +93,17 @@ namespace FLAU_Demo
 
         private T WaitForElement<T>(Func<T> getter)
         {
-            var retry = Retry.WhileNull<T>(() => getter(), TimeSpan.FromMilliseconds(10000));
+            var retry = Retry.WhileNull<T>(() => getter(), TimeSpan.FromMilliseconds(5000));
 
             return retry.Result;
+        }
+
+        private static void takeScreenShot()
+        {
+            var image = Capture.Screen();
+            string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, "newEntry.png"); //use NUnit test context
+            Console.WriteLine("Writing path to " + path);
+            image.ToFile(path);
         }
     }
 }

@@ -3,6 +3,7 @@ using FlaUI.Core.Capturing;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ToolTip;
 
 // This uses the NuGet package FlaUI.UIA3.Signed (4.0.0)
 // Also, use chocolatey to install FlaUIInspect (choco install flauinspect), then run from cmd flauinspect
@@ -17,6 +18,7 @@ namespace FLAU_Demo
     {
         Application kpApp;
         UIA3Automation automation = new UIA3Automation();
+        double glblTimeout = 5000;
 
         [SetUp]
         public void Setup()
@@ -27,7 +29,9 @@ namespace FLAU_Demo
             var passwordField = WaitForElement(() => loginWin?.FindFirstDescendant(cf => cf.ByAutomationId("m_tbPassword")).AsTextBox());
             passwordField?.Enter("password");
 
-            loginWin.FindFirstDescendant(cf => cf.ByAutomationId("m_btnOK")).AsButton().Invoke();
+            var OkBtn = loginWin.FindFirstDescendant(cf => cf.ByAutomationId("m_btnOK")).AsButton();
+            OkBtn.WaitUntilClickable();
+            OkBtn.Invoke();
         }
 
         [Test]
@@ -70,15 +74,23 @@ namespace FLAU_Demo
                     yesBtn.Click();
                 }
 
-                //Save & Close the app
+                //Save
                 var saveBtn = WaitForElement(() => mainWin.FindFirstByXPath("/ToolBar/Button[@Name=\"Save Database\"]").AsButton());
                 saveBtn.Click();
-                mainWin.Close();
+                //mainWin.Close();
 
             }, TimeSpan.FromSeconds(10), null, true);
         }
 
-        private Application startApp()
+        [TearDown]
+        public void TearDown()
+        {
+            //Close the app
+            automation.Dispose();
+            kpApp.Close();
+        }
+
+            private Application startApp()
         {
             var app = Application.Launch(@"C:\Program Files\KeePass Password Safe 2\KeePass.exe");
 
@@ -91,8 +103,12 @@ namespace FLAU_Demo
 
         private T WaitForElement<T>(Func<T> getter)
         {
-            var retry = Retry.WhileNull<T>(() => getter(), TimeSpan.FromMilliseconds(5000));
+            var retry = Retry.WhileNull<T>(() => getter(), TimeSpan.FromMilliseconds(glblTimeout));
 
+            if (!retry.Success)
+            {
+                Assert.Fail($"Element not visible, timeout after {glblTimeout}ms");
+            }
             return retry.Result;
         }
 
